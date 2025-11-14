@@ -772,7 +772,13 @@ def vulnerable_insert(request):
             query = f"INSERT INTO objetos (nombre, descripcion, ubicacion) VALUES ('{nombre}', '{descripcion}', '{ubicacion}')"
             
             print(f"EXECUTING DANGEROUS INSERT: {query}")  # For demonstration
-            cursor.execute(query)
+            
+            # Execute with multi=True to allow multiple statements (EXTREMELY DANGEROUS!)
+            # This allows UPDATE, DELETE, DROP attacks through INSERT
+            for result in cursor.execute(query, multi=True):
+                if result.with_rows:
+                    result.fetchall()
+            
             conexion.commit()
             
             return JsonResponse({
