@@ -17,18 +17,22 @@ def inventario_microservicio(request):
     return render(request, 'consultarRutasBodega/inventario_microservicio.html')
 
 def obtener_conexion_mysql():
-    """Obtiene conexión a MySQL local en la instancia"""
+    """Obtiene conexión a MySQL (puede ser local o RDS)"""
     try:
+        # Try to get host from environment variable first (for RDS)
+        db_host = os.getenv('DB_HOST', 'localhost')
+        
         conexion = mysql.connector.connect(
-            host='localhost',
+            host=db_host,
             database='rutasbodega',
             user='django_user',
             password='django123',
-            charset='utf8mb4'
+            charset='utf8mb4',
+            connect_timeout=10
         )
         return conexion
     except Error as e:
-        print(f"Error conectando a MySQL local: {e}")
+        print(f"Error conectando a MySQL en {db_host}: {e}")
         return None
 
 def crear_tablas_si_no_existen():
