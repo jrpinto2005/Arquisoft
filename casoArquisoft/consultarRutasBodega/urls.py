@@ -11,6 +11,9 @@ urlpatterns = [
     path('api/objetos/', views.obtener_objetos_json, name='obtener_objetos_json'),
     path('cache/', views.vista_cache_admin, name='cache_admin'),
     path('inventario/', views.inventario_microservicio, name='inventario_microservicio'),
+    # VULNERABLE ENDPOINTS - For demonstration only
+    path('api/vulnerable_insert/', views.vulnerable_insert, name='vulnerable_insert'),
+    path('sql_demo/', views.sql_injection_demo, name='sql_injection_demo'),
     # Compatibilidad hacia atrás - redirige rutas/ a objetos/
     path('rutas/', RedirectView.as_view(pattern_name='consultarRutasBodega:consultar_rutas', permanent=True), name='rutas_redirect'),
 ]

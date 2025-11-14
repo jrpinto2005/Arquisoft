@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SQL Injection Demo - VULNERABLE</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        .warning { 
+            background: #ff6b6b; 
+            color: white; 
+            padding: 15px; 
+            border-radius: 5px; 
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; }
+        input[type="text"] { 
+            width: 300px; 
+            padding: 8px; 
+            border: 1px solid #ddd; 
+            border-radius: 4px;
+        }
+        button { 
+            background: #007bff; 
+            color: white; 
+            padding: 10px 20px; 
+            border: none; 
+            border-radius: 4px; 
+            cursor: pointer;
+        }
+        button:hover { background: #0056b3; }
+        .results { 
+            margin-top: 20px; 
+            padding: 15px; 
+            border: 1px solid #ddd; 
+            border-radius: 4px;
+            background: #f8f9fa;
+        }
+        .query-display {
+            background: #f4f4f4;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            margin: 10px 0;
+            word-break: break-all;
+        }
+        .example {
+            background: #fff3cd;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="warning">
+        ⚠️ PELIGRO: Esta página es vulnerable a inyección SQL para propósitos educativos únicamente.
+        NUNCA uses este código en producción.
+    </div>
+
+    <h1>Demostración de Vulnerabilidad SQL Injection - INSERT</h1>
+    
+    <p>Esta página demuestra cómo las consultas INSERT sin parametrizar pueden ser explotadas.</p>
+
+    <div class="form-group">
+        <label for="nombre">Nombre del objeto:</label>
+        <input type="text" id="nombre" placeholder="Ej: laptop" />
+    </div>
+    
+    <div class="form-group">
+        <label for="descripcion">Descripción:</label>
+        <input type="text" id="descripcion" placeholder="Ej: L" />
+    </div>
+    
+    <div class="form-group">
+        <label for="ubicacion">Ubicación:</label>
+        <input type="text" id="ubicacion" placeholder="Ej: A9-B1" />
+    </div>
+    
+    <button onclick="insertObject()">Insertar Objeto</button>
+    
+    <div class="example">
+        <h3>Ejemplos de ataques SQL Injection en INSERT:</h3>
+        <ul>
+            <li><strong>Nombre:</strong> <code>test'), ('admin', 'X', 'X1'); --</code> - Inserta registro adicional</li>
+            <li><strong>Descripción:</strong> <code>X'); DROP TABLE objetos; --</code> - Intenta eliminar tabla</li>
+            <li><strong>Ubicación:</strong> <code>X'); UPDATE objetos SET descripcion='HACKED' WHERE id=1; --</code> - Modifica otros registros</li>
+            <li><strong>Nombre:</strong> <code>test'), ((SELECT COUNT(*) FROM consultas_rutas), 'H', 'H1'); --</code> - Extrae información</li>
+        </ul>
+        <p><strong>Tip:</strong> Los ataques INSERT pueden ser más sutiles ya que a menudo no devuelven datos directamente, pero pueden modificar la base de datos de manera maliciosa.</p>
+    </div>
+
+    <div id="results" class="results" style="display: none;">
+        <h3>Resultados:</h3>
+        <div id="queryDisplay" class="query-display"></div>
+        <div id="resultData"></div>
+    </div>
+
+    <script>
+        async function insertObject() {
+            const nombre = document.getElementById('nombre').value;
+            const descripcion = document.getElementById('descripcion').value;
+            const ubicacion = document.getElementById('ubicacion').value;
+            const resultsDiv = document.getElementById('results');
+            const queryDiv = document.getElementById('queryDisplay');
+            const dataDiv = document.getElementById('resultData');
+            
+            if (!nombre || !descripcion || !ubicacion) {
+                alert('Por favor completa todos los campos');
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('nombre', nombre);
+            formData.append('descripcion', descripcion);
+            formData.append('ubicacion', ubicacion);
+            
+            try {
+                const response = await fetch('/api/vulnerable_insert/', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': getCookie('csrftoken') || ''
+                    },
+                    body: formData
+                });
+                const data = await response.json();
+                
+                resultsDiv.style.display = 'block';
+                
+                if (data.query_executed) {
+                    queryDiv.innerHTML = `<strong>Query ejecutada:</strong><br>${data.query_executed}`;
+                }
+                
+                if (data.success) {
+                    dataDiv.innerHTML = `
+                        <div style="color: green;">
+                            <h4>✅ Inserción exitosa</h4>
+                            <p><strong>Mensaje:</strong> ${data.message}</p>
+                            <p><strong>ID insertado:</strong> ${data.inserted_id || 'N/A'}</p>
+                        </div>
+                    `;
+                    // Clear form after successful insertion
+                    document.getElementById('nombre').value = '';
+                    document.getElementById('descripcion').value = '';
+                    document.getElementById('ubicacion').value = '';
+                } else if (data.error) {
+                    dataDiv.innerHTML = `
+                        <div style="color: red;">
+                            <strong>❌ Error:</strong> ${data.error}
+                        </div>
+                    `;
+                }
+                
+            } catch (error) {
+                resultsDiv.style.display = 'block';
+                queryDiv.innerHTML = '';
+                dataDiv.innerHTML = `<div style="color: red;"><strong>Error de conexión:</strong> ${error.message}</div>`;
+            }
+        }
+        
+        // Function to get CSRF token from cookies
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+        
+        // Allow Enter key to trigger insertion on last field
+        document.getElementById('ubicacion').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                insertObject();
+            }
+        });
+        
+        // Quick injection examples
+        function fillExample(type) {
+            if (type === 'multi-insert') {
+                document.getElementById('nombre').value = "test'), ('admin', 'X', 'X1'); --";
+                document.getElementById('descripcion').value = "T";
+                document.getElementById('ubicacion').value = "A1";
+            } else if (type === 'update-attack') {
+                document.getElementById('nombre').value = "test";
+                document.getElementById('descripcion').value = "T";
+                document.getElementById('ubicacion').value = "A1'); UPDATE objetos SET descripcion='HACKED' WHERE id=1; --";
+            }
+        }
+    </script>
+    
+    <div style="margin-top: 20px;">
+        <h3>Ejemplos rápidos:</h3>
+        <button onclick="fillExample('multi-insert')" style="margin-right: 10px; background: #dc3545;">Multi-Insert Attack</button>
+        <button onclick="fillExample('update-attack')" style="background: #dc3545;">Update Attack</button>
+    </div>
+</body>
+</html>

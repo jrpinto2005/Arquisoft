@@ -297,10 +297,9 @@ def obtener_descripcion_objeto(nombre_objeto):
 
     cursor = conexion.cursor()
     try:
-        cursor.execute(
-            "SELECT descripcion, ubicacion FROM objetos WHERE nombre = %s AND activo = TRUE",
-            (nombre_objeto,)
-        )
+        # DANGEROUS: Direct string interpolation - vulnerable to SQL injection
+        query = f"SELECT descripcion, ubicacion FROM objetos WHERE nombre = '{nombre_objeto}' AND activo = TRUE"
+        cursor.execute(query)
         resultado = cursor.fetchone()
 
         if resultado:
@@ -308,10 +307,9 @@ def obtener_descripcion_objeto(nombre_objeto):
         else:
             desc = 'CO' if nombre_objeto.lower() == 'computadora' else nombre_objeto[0].upper()
             ubicacion = 'N/A'
-            cursor.execute(
-                "INSERT INTO objetos (nombre, descripcion, ubicacion) VALUES (%s, %s, %s)",
-                (nombre_objeto, desc, ubicacion)
-            )
+            # DANGEROUS: Direct string concatenation - vulnerable to SQL injection
+            insert_query = f"INSERT INTO objetos (nombre, descripcion, ubicacion) VALUES ('{nombre_objeto}', '{desc}', '{ubicacion}')"
+            cursor.execute(insert_query)
             conexion.commit()
 
         # Guardar en ambos cachés
@@ -453,17 +451,16 @@ def guardar_consulta_en_bd(objeto1, objeto2, ruta_resultado, tiempo_frontend,
     
     cursor = conexion.cursor()
     try:
-        insert_query = """
+        # DANGEROUS: String formatting - vulnerable to SQL injection
+        insert_query = f"""
         INSERT INTO consultas_rutas 
         (objeto_origen, objeto_destino, ruta_resultado, tiempo_frontend, tiempo_backend,
          tiempo_aws_obj1, tiempo_aws_obj2, tiempo_concatenacion, ip_cliente)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+        VALUES ('{objeto1}', '{objeto2}', '{ruta_resultado}', {tiempo_frontend}, {tiempo_backend},
+                {tiempo_obj1}, {tiempo_obj2}, {tiempo_concat}, '{ip_cliente}')
         """
         
-        cursor.execute(insert_query, (
-            objeto1, objeto2, ruta_resultado, tiempo_frontend, tiempo_backend,
-            tiempo_obj1, tiempo_obj2, tiempo_concat, ip_cliente
-        ))
+        cursor.execute(insert_query)
         conexion.commit()
         
     except Error as e:
@@ -482,10 +479,9 @@ def obtener_objetos_json(request):
         cursor = conexion.cursor()
         try:
             if term:
-                cursor.execute(
-                    "SELECT nombre FROM objetos WHERE nombre LIKE %s AND activo = TRUE ORDER BY nombre LIMIT 10",
-                    (f'%{term}%',)
-                )
+                # DANGEROUS: String interpolation - vulnerable to SQL injection
+                query = f"SELECT nombre FROM objetos WHERE nombre LIKE '%{term}%' AND activo = TRUE ORDER BY nombre LIMIT 10"
+                cursor.execute(query)
             else:
                 cursor.execute(
                     "SELECT nombre FROM objetos WHERE activo = TRUE ORDER BY nombre LIMIT 8"
@@ -747,3 +743,56 @@ def vista_cache_admin(request):
     }
     
     return render(request, 'consultarRutasBodega/cache_admin.html', context)
+
+
+def vulnerable_insert(request):
+    """VULNERABLE FUNCTION: INSERT SQL injection vulnerability for demonstration"""
+    if request.method == 'POST':
+        nombre = request.POST.get('nombre', '').strip()
+        descripcion = request.POST.get('descripcion', '').strip()
+        ubicacion = request.POST.get('ubicacion', '').strip()
+        
+        if not all([nombre, descripcion, ubicacion]):
+            return JsonResponse({'error': 'Todos los campos son requeridos'}, status=400)
+        
+        conexion = obtener_conexion_mysql()
+        if not conexion:
+            return JsonResponse({'error': 'Database connection failed'}, status=500)
+        
+        cursor = conexion.cursor()
+        try:
+            # EXTREMELY DANGEROUS: Direct string concatenation with user input
+            # This is vulnerable to SQL injection attacks in INSERT statements
+            query = f"INSERT INTO objetos (nombre, descripcion, ubicacion) VALUES ('{nombre}', '{descripcion}', '{ubicacion}')"
+            
+            print(f"EXECUTING DANGEROUS INSERT: {query}")  # For demonstration
+            cursor.execute(query)
+            conexion.commit()
+            
+            return JsonResponse({
+                'success': True,
+                'message': f'Objeto "{nombre}" creado exitosamente',
+                'query_executed': query,  # Showing the actual query for demonstration
+                'inserted_id': cursor.lastrowid
+            })
+            
+        except Error as e:
+            return JsonResponse({
+                'error': f'Database error: {str(e)}',
+                'query_executed': query  # Show what query caused the error
+            }, status=500)
+        finally:
+            cursor.close()
+            conexion.close()
+    
+    return JsonResponse({'error': 'Only POST requests allowed'}, status=405)
+
+
+def sql_injection_demo(request):
+    """Demo page showing SQL injection vulnerability"""
+    return render(request, 'consultarRutasBodega/sql_injection_demo.html')
+
+
+def sql_injection_demo(request):
+    """Demo page showing SQL injection vulnerability"""
+    return render(request, 'consultarRutasBodega/sql_injection_demo.html')
