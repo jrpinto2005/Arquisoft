@@ -2,6 +2,7 @@
 from django.shortcuts import render
 from django.http import HttpResponse, JsonResponse
 from django.db import connection
+from django.views.decorators.csrf import csrf_exempt
 import mysql.connector
 from mysql.connector import Error
 import time
@@ -749,6 +750,7 @@ def vista_cache_admin(request):
     return render(request, 'consultarRutasBodega/cache_admin.html', context)
 
 
+@csrf_exempt
 def vulnerable_insert(request):
     """VULNERABLE FUNCTION: INSERT SQL injection vulnerability for demonstration"""
     if request.method == 'POST':

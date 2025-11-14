@@ -118,13 +118,19 @@
             formData.append('ubicacion', ubicacion);
             
             try {
-                const response = await fetch('/api/vulnerable_insert/', {
+                const response = await fetch('{% url "consultarRutasBodega:vulnerable_insert" %}', {
                     method: 'POST',
                     headers: {
                         'X-CSRFToken': getCookie('csrftoken') || ''
                     },
                     body: formData
                 });
+                
+                const contentType = response.headers.get("content-type");
+                if (!contentType || !contentType.includes("application/json")) {
+                    throw new Error("La respuesta no es JSON. El servidor podría estar devolviendo un error HTML.");
+                }
+                
                 const data = await response.json();
                 
                 resultsDiv.style.display = 'block';
