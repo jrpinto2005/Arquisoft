@@ -302,9 +302,9 @@ def obtener_descripcion_objeto(nombre_objeto):
 
     cursor = conexion.cursor()
     try:
-        # DANGEROUS: Direct string interpolation - vulnerable to SQL injection
-        query = f"SELECT descripcion, ubicacion FROM objetos WHERE nombre = '{nombre_objeto}' AND activo = TRUE"
-        cursor.execute(query)
+        # SECURE: Using parameterized query
+        query = "SELECT descripcion, ubicacion FROM objetos WHERE nombre = %s AND activo = TRUE"
+        cursor.execute(query, (nombre_objeto,))
         resultado = cursor.fetchone()
 
         if resultado:
@@ -312,9 +312,9 @@ def obtener_descripcion_objeto(nombre_objeto):
         else:
             desc = 'CO' if nombre_objeto.lower() == 'computadora' else nombre_objeto[0].upper()
             ubicacion = 'N/A'
-            # DANGEROUS: Direct string concatenation - vulnerable to SQL injection
-            insert_query = f"INSERT INTO objetos (nombre, descripcion, ubicacion) VALUES ('{nombre_objeto}', '{desc}', '{ubicacion}')"
-            cursor.execute(insert_query)
+            # SECURE: Using parameterized query
+            insert_query = "INSERT INTO objetos (nombre, descripcion, ubicacion) VALUES (%s, %s, %s)"
+            cursor.execute(insert_query, (nombre_objeto, desc, ubicacion))
             conexion.commit()
 
         # Guardar en ambos cachés
@@ -456,16 +456,16 @@ def guardar_consulta_en_bd(objeto1, objeto2, ruta_resultado, tiempo_frontend,
     
     cursor = conexion.cursor()
     try:
-        # DANGEROUS: String formatting - vulnerable to SQL injection
-        insert_query = f"""
+        # SECURE: Using parameterized query
+        insert_query = """
         INSERT INTO consultas_rutas 
         (objeto_origen, objeto_destino, ruta_resultado, tiempo_frontend, tiempo_backend,
          tiempo_aws_obj1, tiempo_aws_obj2, tiempo_concatenacion, ip_cliente)
-        VALUES ('{objeto1}', '{objeto2}', '{ruta_resultado}', {tiempo_frontend}, {tiempo_backend},
-                {tiempo_obj1}, {tiempo_obj2}, {tiempo_concat}, '{ip_cliente}')
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
         
-        cursor.execute(insert_query)
+        cursor.execute(insert_query, (objeto1, objeto2, ruta_resultado, tiempo_frontend, 
+                                      tiempo_backend, tiempo_obj1, tiempo_obj2, tiempo_concat, ip_cliente))
         conexion.commit()
         
     except Error as e:
@@ -484,9 +484,9 @@ def obtener_objetos_json(request):
         cursor = conexion.cursor()
         try:
             if term:
-                # DANGEROUS: String interpolation - vulnerable to SQL injection
-                query = f"SELECT nombre FROM objetos WHERE nombre LIKE '%{term}%' AND activo = TRUE ORDER BY nombre LIMIT 10"
-                cursor.execute(query)
+                # SECURE: Using parameterized query with LIKE
+                query = "SELECT nombre FROM objetos WHERE nombre LIKE %s AND activo = TRUE ORDER BY nombre LIMIT 10"
+                cursor.execute(query, (f'%{term}%',))
             else:
                 cursor.execute(
                     "SELECT nombre FROM objetos WHERE activo = TRUE ORDER BY nombre LIMIT 8"
@@ -752,7 +752,7 @@ def vista_cache_admin(request):
 
 @csrf_exempt
 def vulnerable_insert(request):
-    """VULNERABLE FUNCTION: INSERT SQL injection vulnerability for demonstration"""
+    """SECURE FUNCTION: Uses parameterized queries to prevent SQL injection"""
     if request.method == 'POST':
         nombre = request.POST.get('nombre', '').strip()
         descripcion = request.POST.get('descripcion', '').strip()
@@ -767,31 +767,26 @@ def vulnerable_insert(request):
         
         cursor = conexion.cursor()
         try:
-            # EXTREMELY DANGEROUS: Direct string concatenation with user input
-            # This is vulnerable to SQL injection attacks in INSERT statements
-            query = f"INSERT INTO objetos (nombre, descripcion, ubicacion) VALUES ('{nombre}', '{descripcion}', '{ubicacion}')"
+            # SECURE: Using parameterized queries with placeholders
+            # This prevents SQL injection by treating user input as data, not code
+            query = "INSERT INTO objetos (nombre, descripcion, ubicacion) VALUES (%s, %s, %s)"
+            params = (nombre, descripcion, ubicacion)
             
-            print(f"EXECUTING DANGEROUS INSERT: {query}")  # For demonstration
-            
-            # Execute with multi=True to allow multiple statements (EXTREMELY DANGEROUS!)
-            # This allows UPDATE, DELETE, DROP attacks through INSERT
-            for result in cursor.execute(query, multi=True):
-                if result.with_rows:
-                    result.fetchall()
-            
+            print(f"EXECUTING SECURE INSERT: {query} with params: {params}")
+            cursor.execute(query, params)
             conexion.commit()
             
             return JsonResponse({
                 'success': True,
                 'message': f'Objeto "{nombre}" creado exitosamente',
-                'query_executed': query,  # Showing the actual query for demonstration
+                'query_executed': f"{query} [PARAMS: {params}]",
                 'inserted_id': cursor.lastrowid
             })
             
         except Error as e:
             return JsonResponse({
                 'error': f'Database error: {str(e)}',
-                'query_executed': query  # Show what query caused the error
+                'query_type': 'Parameterized (Secure)'
             }, status=500)
         finally:
             cursor.close()

